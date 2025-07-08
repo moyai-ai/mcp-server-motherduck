@@ -28,6 +28,10 @@ def build_application(
         saas_mode=saas_mode,
         read_only=read_only,
     )
+    
+    # Add cleanup handler
+    import atexit
+    atexit.register(lambda: db_client.close())
 
     logger.info("Registering handlers")
 
@@ -128,7 +132,8 @@ def build_application(
                     return [
                         types.TextContent(type="text", text="Error: No query provided")
                     ]
-                tool_response = db_client.query(arguments["query"])
+                # Use sync wrapper for backward compatibility
+                tool_response = db_client.query_sync(arguments["query"])
                 return [types.TextContent(type="text", text=str(tool_response))]
 
             return [types.TextContent(type="text", text=f"Unsupported tool: {name}")]

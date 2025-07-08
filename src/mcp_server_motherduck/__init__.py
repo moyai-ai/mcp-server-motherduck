@@ -2,6 +2,7 @@ import anyio
 import logging
 import click
 from .server import build_application
+from .fastmcp_server import create_fastmcp_server, DatabaseConfig
 from .configs import SERVER_VERSION, SERVER_LOCALHOST, UVICORN_LOGGING_CONFIG
 
 __version__ = SERVER_VERSION
@@ -51,6 +52,12 @@ logging.basicConfig(
     default=False,
     help="(Default: `False`) Enable JSON responses instead of SSE streams. Only supported for `stream` transport.",
 )
+@click.option(
+    "--use-fastmcp",
+    is_flag=True,
+    default=False,
+    help="(Default: `False`) Use FastMCP for better session management and health checks.",
+)
 def main(
     port,
     transport,
@@ -60,12 +67,43 @@ def main(
     saas_mode,
     read_only,
     json_response,
+    use_fastmcp,
 ):
     """Main entry point for the package."""
 
     logger.info("🦆 MotherDuck MCP Server v" + SERVER_VERSION)
     logger.info("Ready to execute SQL queries via DuckDB/MotherDuck")
 
+    if use_fastmcp:
+        # Use FastMCP for better session management
+        config = DatabaseConfig(
+            db_path=db_path,
+            motherduck_token=motherduck_token,
+            home_dir=home_dir,
+            saas_mode=saas_mode,
+            read_only=read_only,
+        )
+        app = create_fastmcp_server(config)
+        
+        if transport == "sse":
+            logger.info("MCP server initialized with FastMCP in \033[32msse\033[0m mode")
+            logger.info(
+                f"🦆 Connect to MotherDuck MCP Server at \033[1m\033[36mhttp://{SERVER_LOCALHOST}:{port}/sse\033[0m"
+            )
+            app.run_sse(host=SERVER_LOCALHOST, port=port)
+        elif transport == "stream":
+            logger.info("MCP server initialized with FastMCP in \033[32mhttp-streamable\033[0m mode")
+            logger.info(
+                f"🦆 Connect to MotherDuck MCP Server at \033[1m\033[36mhttp://{SERVER_LOCALHOST}:{port}/mcp\033[0m"
+            )
+            app.run_http(host=SERVER_LOCALHOST, port=port)
+        else:
+            logger.info("MCP server initialized with FastMCP in \033[32mstdio\033[0m mode")
+            logger.info("Waiting for client connection")
+            app.run_stdio()
+        return
+    
+    # Original implementation for backward compatibility
     app, init_opts = build_application(
         db_path=db_path,
         motherduck_token=motherduck_token,

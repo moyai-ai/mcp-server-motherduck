@@ -12,6 +12,7 @@ dependencies = [
  "uvicorn>=0.34.0",
  "anyio>=4.8.0",
  "mcp>=1.9.4",
+ "fastmcp>=2.10.0",
 ]
 
 [[project.authors]]
@@ -24,3 +25,4 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 mcp-server-motherduck = "mcp_server_motherduck:main"
+mcp-server-motherduck-lite = "mcp_server_motherduck.lightweight_server:main"
